@@ -7,12 +7,13 @@ task_index = 0
 num_workers = 1
 NUM_GPUS = 0
 MY_GPU = 0
-backend = ''
+backend = ""
 tf_ver = None
 
 
 def init_MPI():
     from mpi4py import MPI
+
     global comm, task_index, num_workers
     comm = MPI.COMM_WORLD
     task_index = comm.Get_rank()
@@ -21,18 +22,19 @@ def init_MPI():
 
 def init_GPU_backend(conf):
     global NUM_GPUS, MY_GPU, backend
-    NUM_GPUS = conf['num_gpus']
+    NUM_GPUS = conf["num_gpus"]
     MY_GPU = task_index % NUM_GPUS
-    backend = conf['model']['backend']
+    backend = conf["model"]["backend"]
 
 
 def pprint_unique(obj):
     from pprint import pprint
+
     if task_index == 0:
         pprint(obj)
 
 
-def print_unique(print_output, end='\n', flush=False):
+def print_unique(print_output, end="\n", flush=False):
     """
     Only master MPI rank 0 calls print().
 
@@ -62,12 +64,12 @@ def write_unique(write_str):
 
 
 def write_all(write_str):
-    '''All MPI ranks write to stdout, appending [rank].
+    """All MPI ranks write to stdout, appending [rank].
 
     No MPI barriers, no guaranteed ordering of output.
-    '''
+    """
     if comm is not None:
-        sys.stdout.write('[{}] '.format(task_index) + write_str)
+        sys.stdout.write("[{}] ".format(task_index) + write_str)
     else:
         sys.stdout.write(write_str)
     sys.stdout.flush()

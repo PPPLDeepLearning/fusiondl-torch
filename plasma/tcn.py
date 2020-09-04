@@ -10,8 +10,17 @@ from keras.layers import Dense, BatchNormalization
 from keras.models import Input, Model
 
 
-def residual_block(x, dilation_rate, nb_filters, kernel_size, padding, activation='relu', dropout_rate=0,
-                   kernel_initializer='he_normal', use_batch_norm=False):
+def residual_block(
+    x,
+    dilation_rate,
+    nb_filters,
+    kernel_size,
+    padding,
+    activation="relu",
+    dropout_rate=0,
+    kernel_initializer="he_normal",
+    use_batch_norm=False,
+):
     # type: (Layer, int, int, int, str, str, float, str, bool) -> Tuple[Layer, Layer]
     """Defines the residual block for the WaveNet TCN
 
@@ -31,18 +40,22 @@ def residual_block(x, dilation_rate, nb_filters, kernel_size, padding, activatio
     """
     prev_x = x
     for k in range(2):
-        x = Conv1D(filters=nb_filters,
-                   kernel_size=kernel_size,
-                   dilation_rate=dilation_rate,
-                   kernel_initializer=kernel_initializer,
-                   padding=padding)(x)
+        x = Conv1D(
+            filters=nb_filters,
+            kernel_size=kernel_size,
+            dilation_rate=dilation_rate,
+            kernel_initializer=kernel_initializer,
+            padding=padding,
+        )(x)
         if use_batch_norm:
-            x = BatchNormalization()(x)  # TODO should be WeightNorm here, but using batchNorm instead
-        x = Activation('relu')(x)
+            x = BatchNormalization()(
+                x
+            )  # TODO should be WeightNorm here, but using batchNorm instead
+        x = Activation("relu")(x)
         x = SpatialDropout1D(rate=dropout_rate)(x)
 
     # 1x1 conv to match the shapes (channel dimension).
-    prev_x = Conv1D(nb_filters, 1, padding='same')(prev_x)
+    prev_x = Conv1D(nb_filters, 1, padding="same")(prev_x)
     res_x = keras.layers.add([prev_x, x])
     res_x = Activation(activation)(res_x)
     return res_x, x
@@ -84,20 +97,22 @@ class TCN:
             A TCN layer.
         """
 
-    def __init__(self,
-                 nb_filters=25,
-                 kernel_size=5,
-                 nb_stacks=1,
-                 num_layers=10,#[1, 2, 4, 8, 16, 32,64,128,256,512],
-                 padding='causal',
-                 use_skip_connections=True,
-                 dropout_rate=0.0,
-                 return_sequences=True,
-                 activation='linear',
-                 name='tcn',
-                 kernel_initializer='he_normal',
-                 use_batch_norm=False):
-        dilations=[2**i for i in range(0,num_layers)]
+    def __init__(
+        self,
+        nb_filters=25,
+        kernel_size=5,
+        nb_stacks=1,
+        num_layers=10,  # [1, 2, 4, 8, 16, 32,64,128,256,512],
+        padding="causal",
+        use_skip_connections=True,
+        dropout_rate=0.0,
+        return_sequences=True,
+        activation="linear",
+        name="tcn",
+        kernel_initializer="he_normal",
+        use_batch_norm=False,
+    ):
+        dilations = [2 ** i for i in range(0, num_layers)]
         self.name = name
         self.return_sequences = return_sequences
         self.dropout_rate = dropout_rate
@@ -111,32 +126,43 @@ class TCN:
         self.kernel_initializer = kernel_initializer
         self.use_batch_norm = use_batch_norm
 
-        if padding != 'causal' and padding != 'same':
-            raise ValueError("Only 'causal' or 'same' padding are compatible for this layer.")
+        if padding != "causal" and padding != "same":
+            raise ValueError(
+                "Only 'causal' or 'same' padding are compatible for this layer."
+            )
 
         if not isinstance(nb_filters, int):
-            print('An interface change occurred after the version 2.1.2.')
-            print('Before: tcn.TCN(x, return_sequences=False, ...)')
-            print('Now should be: tcn.TCN(return_sequences=False, ...)(x)')
-            print('The alternative is to downgrade to 2.1.2 (pip install keras-tcn==2.1.2).')
+            print("An interface change occurred after the version 2.1.2.")
+            print("Before: tcn.TCN(x, return_sequences=False, ...)")
+            print("Now should be: tcn.TCN(return_sequences=False, ...)(x)")
+            print(
+                "The alternative is to downgrade to 2.1.2 (pip install keras-tcn==2.1.2)."
+            )
             raise Exception()
 
     def __call__(self, inputs):
         x = inputs
         # 1D FCN.
-        x = Conv1D(self.nb_filters, 1, padding=self.padding, kernel_initializer=self.kernel_initializer)(x)
+        x = Conv1D(
+            self.nb_filters,
+            1,
+            padding=self.padding,
+            kernel_initializer=self.kernel_initializer,
+        )(x)
         skip_connections = []
         for s in range(self.nb_stacks):
             for d in self.dilations:
-                x, skip_out = residual_block(x,
-                                             dilation_rate=d,
-                                             nb_filters=self.nb_filters,
-                                             kernel_size=self.kernel_size,
-                                             padding=self.padding,
-                                             activation=self.activation,
-                                             dropout_rate=self.dropout_rate,
-                                             kernel_initializer=self.kernel_initializer,
-                                             use_batch_norm=self.use_batch_norm)
+                x, skip_out = residual_block(
+                    x,
+                    dilation_rate=d,
+                    nb_filters=self.nb_filters,
+                    kernel_size=self.kernel_size,
+                    padding=self.padding,
+                    activation=self.activation,
+                    dropout_rate=self.dropout_rate,
+                    kernel_initializer=self.kernel_initializer,
+                    use_batch_norm=self.use_batch_norm,
+                )
                 skip_connections.append(skip_out)
         if self.use_skip_connections:
             x = keras.layers.add(skip_connections)
@@ -145,24 +171,26 @@ class TCN:
         return x
 
 
-def compiled_tcn(num_feat,  # type: int
-                 num_classes,  # type: int
-                 nb_filters,  # type: int
-                 kernel_size,  # type: int
-                 dilations,  # type: List[int]
-                 nb_stacks,  # type: int
-                 max_len,  # type: int
-                 padding='causal',  # type: str
-                 use_skip_connections=True,  # type: bool
-                 return_sequences=True,
-                 regression=False,  # type: bool
-                 dropout_rate=0.05,  # type: float
-                 name='tcn',  # type: str,
-                 kernel_initializer='he_normal',  # type: str,
-                 activation='linear',  # type:str,
-                 opt='adam',
-                 lr=0.002,
-                 use_batch_norm=False):
+def compiled_tcn(
+    num_feat,  # type: int
+    num_classes,  # type: int
+    nb_filters,  # type: int
+    kernel_size,  # type: int
+    dilations,  # type: List[int]
+    nb_stacks,  # type: int
+    max_len,  # type: int
+    padding="causal",  # type: str
+    use_skip_connections=True,  # type: bool
+    return_sequences=True,
+    regression=False,  # type: bool
+    dropout_rate=0.05,  # type: float
+    name="tcn",  # type: str,
+    kernel_initializer="he_normal",  # type: str,
+    activation="linear",  # type:str,
+    opt="adam",
+    lr=0.002,
+    use_batch_norm=False,
+):
     # type: (...) -> keras.Model
     """Creates a compiled TCN model for a given task (i.e. regression or classification).
     Classification uses a sparse categorical loss. Please input class ids and not one-hot encodings.
@@ -194,24 +222,35 @@ def compiled_tcn(num_feat,  # type: int
 
     input_layer = Input(shape=(max_len, num_feat))
 
-    x = TCN(nb_filters, kernel_size, nb_stacks, dilations, padding,
-            use_skip_connections, dropout_rate, return_sequences,
-            activation, name, kernel_initializer, use_batch_norm)(input_layer)
+    x = TCN(
+        nb_filters,
+        kernel_size,
+        nb_stacks,
+        dilations,
+        padding,
+        use_skip_connections,
+        dropout_rate,
+        return_sequences,
+        activation,
+        name,
+        kernel_initializer,
+        use_batch_norm,
+    )(input_layer)
 
-    print('x.shape=', x.shape)
+    print("x.shape=", x.shape)
 
     def get_opt():
-        if opt == 'adam':
-            return optimizers.Adam(lr=lr, clipnorm=1.)
-        elif opt == 'rmsprop':
-            return optimizers.RMSprop(lr=lr, clipnorm=1.)
+        if opt == "adam":
+            return optimizers.Adam(lr=lr, clipnorm=1.0)
+        elif opt == "rmsprop":
+            return optimizers.RMSprop(lr=lr, clipnorm=1.0)
         else:
-            raise Exception('Only Adam and RMSProp are available here')
+            raise Exception("Only Adam and RMSProp are available here")
 
     if not regression:
         # classification
         x = Dense(num_classes)(x)
-        x = Activation('softmax')(x)
+        x = Activation("softmax")(x)
         output_layer = x
         model = Model(input_layer, output_layer)
 
@@ -227,14 +266,16 @@ def compiled_tcn(num_feat,  # type: int
             y_pred_labels = K.cast(y_pred_labels, K.floatx())
             return K.cast(K.equal(y_true, y_pred_labels), K.floatx())
 
-        model.compile(get_opt(), loss='sparse_categorical_crossentropy', metrics=[accuracy])
+        model.compile(
+            get_opt(), loss="sparse_categorical_crossentropy", metrics=[accuracy]
+        )
     else:
         # regression
         x = Dense(1)(x)
-        x = Activation('linear')(x)
+        x = Activation("linear")(x)
         output_layer = x
         model = Model(input_layer, output_layer)
-        model.compile(get_opt(), loss='mean_squared_error')
-    print('model.x = {}'.format(input_layer.shape))
-    print('model.y = {}'.format(output_layer.shape))
+        model.compile(get_opt(), loss="mean_squared_error")
+    print("model.x = {}".format(input_layer.shape))
+    print("model.y = {}".format(output_layer.shape))
     return model

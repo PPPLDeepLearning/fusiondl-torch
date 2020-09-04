@@ -1,4 +1,4 @@
-'''
+"""
 #########################################################
 This file containts classes to handle data processing
 
@@ -6,12 +6,13 @@ Author: Julian Kates-Harbeck, jkatesharbeck@g.harvard.edu
 
 This work was supported by the DOE CSGF program.
 #########################################################
-'''
+"""
 
 from __future__ import print_function
 import itertools
 
 import numpy as np
+
 # from scipy.interpolate import UnivariateSpline
 
 # interpolate in a way that doesn't use future information.
@@ -21,11 +22,11 @@ import numpy as np
 
 
 def time_sensitive_interp(x, t, t_new):
-    indices = np.maximum(0, np.searchsorted(t, t_new, side='right')-1)
+    indices = np.maximum(0, np.searchsorted(t, t_new, side="right") - 1)
     return x[indices]
 
 
-def resample_signal(t, sig, tmin, tmax, dt, precision_str='float32'):
+def resample_signal(t, sig, tmin, tmax, dt, precision_str="float32"):
     order = np.argsort(t)
     t = t[order]
     sig = sig[order, :]
@@ -37,33 +38,33 @@ def resample_signal(t, sig, tmin, tmax, dt, precision_str='float32'):
         sig_interp[:, i] = time_sensitive_interp(sig[:, i], t, tt)
         # f = UnivariateSpline(t,sig[:,i],s=0,k=1,ext=0)
         # sig_interp[:,i] = f(tt)
-    if(np.any(np.isnan(sig_interp))):
+    if np.any(np.isnan(sig_interp)):
         print("signal contains nan")
-    if(np.any(t[1:] - t[:-1] <= 0)):
+    if np.any(t[1:] - t[:-1] <= 0):
         print("non increasing")
         idx = np.where(t[1:] - t[:-1] <= 0)[0][0]
-        print(t[idx-10:idx+10])
+        print(t[idx - 10 : idx + 10])
 
     return tt, sig_interp
 
 
 def cut_signal(t, sig, tmin, tmax):
-    mask = np.logical_and(t >= tmin,  t <= tmax)
+    mask = np.logical_and(t >= tmin, t <= tmax)
     return t[mask], sig[mask, :]
 
 
 def cut_and_resample_signal(t, sig, tmin, tmax, dt, precision_str):
     t, sig = cut_signal(t, sig, tmin, tmax)
-    print(tmin,tmax)
+    print(tmin, tmax)
     return resample_signal(t, sig, tmin, tmax, dt, precision_str)
 
 
-def get_individual_shot_file(prepath, shot_num, ext='.txt'):
+def get_individual_shot_file(prepath, shot_num, ext=".txt"):
     return prepath + str(shot_num) + ext
 
 
 def append_to_filename(path, to_append):
-    ending_idx = path.rfind('.')
+    ending_idx = path.rfind(".")
     new_path = path[:ending_idx] + to_append + path[ending_idx:]
     return new_path
 
@@ -71,14 +72,14 @@ def append_to_filename(path, to_append):
 def train_test_split(x, frac, do_shuffle=False):
     if not isinstance(x, np.ndarray):
         return train_test_split_robust(x, frac, do_shuffle)
-    mask = np.array(range(len(x))) < frac*len(x)
+    mask = np.array(range(len(x))) < frac * len(x)
     if do_shuffle:
         np.random.shuffle(mask)
     return x[mask], x[~mask]
 
 
 def train_test_split_robust(x, frac, do_shuffle=False):
-    mask = np.array(range(len(x))) < frac*len(x)
+    mask = np.array(range(len(x))) < frac * len(x)
     if do_shuffle:
         np.random.shuffle(mask)
     train = []
@@ -94,7 +95,7 @@ def train_test_split_robust(x, frac, do_shuffle=False):
 def train_test_split_all(x, frac, do_shuffle=True):
     groups = []
     length = len(x[0])
-    mask = np.array(range(length)) < frac*length
+    mask = np.array(range(length)) < frac * length
     if do_shuffle:
         np.random.shuffle(mask)
     for item in x:

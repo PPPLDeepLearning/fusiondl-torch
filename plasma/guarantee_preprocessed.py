@@ -4,6 +4,7 @@ import numpy as np
 
 from conf import conf
 from pprint import pprint
+
 pprint(conf)
 
 #####################################################
@@ -11,4 +12,4 @@ pprint(conf)
 #####################################################
 np.random.seed(0)
 random.seed(0)
-guarantee_preprocessed(conf,verbose=True)
+guarantee_preprocessed(conf, verbose=True)

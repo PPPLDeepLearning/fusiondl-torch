@@ -14,7 +14,7 @@ class ByShotAugmentator(object):
         return s
 
     def apply(self, shot):
-        '''
+        """
         The purpose of the method is to apply normalization to a shot and then
         optionally apply augmentation with a function that is individual to
         every shot.
@@ -26,7 +26,7 @@ class ByShotAugmentator(object):
           - conf['data']['augment_during_training']: boolean flag, yes or no to
         augment during training
 
-        '''
+        """
         # first just apply normalization as usual.
         self.normalizer.apply(shot)
         if shot.augmentation_fn is not None:
@@ -37,10 +37,9 @@ class ByShotAugmentator(object):
 
 
 class AbstractAugmentator(object):
-
     def __init__(self, normalizer, is_inference, conf):
         self.conf = conf
-        self.to_augment_str = self.conf['data']['signal_to_augment']
+        self.to_augment_str = self.conf["data"]["signal_to_augment"]
         self.normalizer = normalizer
         self.is_inference = is_inference
 
@@ -69,9 +68,8 @@ class AbstractAugmentator(object):
 
 
 class Augmentator(AbstractAugmentator):
-
     def apply(self, shot):
-        '''
+        """
         The purpose of the method is to apply normalization to a shot and then
         optionally apply augmentation.  During inference, a specific signal
         (one at a time) is augmented based on the string supplied in the config
@@ -87,7 +85,7 @@ class Augmentator(AbstractAugmentator):
           - conf['data']['augment_during_training']: boolean flag, yes or no to
         augment during training
 
-        '''
+        """
         # first just apply normalization as usual.
         self.normalizer.apply(shot)
         if self.is_inference:
@@ -95,9 +93,8 @@ class Augmentator(AbstractAugmentator):
             to_augment_str = self.to_augment_str
         else:
             # during training augment a random signal, one at a time
-            if self.conf['data']['augment_during_training']:
-                to_augment_str = random.choice(
-                    [x.description for x in shot.signals])
+            if self.conf["data"]["augment_during_training"]:
+                to_augment_str = random.choice([x.description for x in shot.signals])
             else:
                 to_augment_str = None
         if to_augment_str is not None:
@@ -105,12 +102,11 @@ class Augmentator(AbstractAugmentator):
             # augment 1 signal at a time?
             for (i, sig) in enumerate(shot.signals):
                 if sig.description == to_augment_str:
-                    print('Augmenting {} signal'.format(sig.description))
-                    shot.signals_dict[sig] = self.augment(
-                        shot.signals_dict[sig])
+                    print("Augmenting {} signal".format(sig.description))
+                    shot.signals_dict[sig] = self.augment(shot.signals_dict[sig])
 
     def augment(self, signal, strength=10):
-        '''
+        """
         The purpose of the method is to modify a signal specified by a
         configuration parameter or at random according to a specific
         mode. Modes include: noise, zeroing and no augmentation.
@@ -129,13 +125,13 @@ class Augmentator(AbstractAugmentator):
 
         Returns:
           - signal: augmented signal ... numpy array of numeric types?
-        '''
-        if self.conf['data']['augmentation_mode'] == "noise":
+        """
+        if self.conf["data"]["augmentation_mode"] == "noise":
             return np.random.normal(0, strength, signal.shape)
-        elif self.conf['data']['augmentation_mode'] == "zero":
+        elif self.conf["data"]["augmentation_mode"] == "zero":
             # if "set to zero" augmentation. Can control in conf.
-            return signal*0.0
-        elif self.conf['data']['augmentation_mode'] == "none":
+            return signal * 0.0
+        elif self.conf["data"]["augmentation_mode"] == "none":
             return signal  # if no augmentation. Should be the default in conf.
         else:
             print("Unknown augmentation mode. Exiting")

@@ -7,19 +7,28 @@ from convlstmcell import ConvLSTMCell, ConvTTLSTMCell
 
 ## Convolutional-LSTM network
 class ConvLSTMNet(nn.Module):
-    def __init__(self,
+    def __init__(
+        self,
         # input to the model
         input_channels,
         # architecture of the model
-        layers_per_block, hidden_channels, skip_stride = None,
+        layers_per_block,
+        hidden_channels,
+        skip_stride=None,
         # scope of convolutional tensor-train layers
-        scope = "all", scope_params = {},
+        scope="all",
+        scope_params={},
         # parameters of convolutional tensor-train layers
-        cell = "convlstm", cell_params = {}, 
+        cell="convlstm",
+        cell_params={},
         # parameters of convolutional operation
-        kernel_size = 3, bias = True,
+        kernel_size=3,
+        bias=True,
         # output function and output format
-        output_sigmoid = False, output_dim = 1,input_signal_width=14):
+        output_sigmoid=False,
+        output_dim=1,
+        input_signal_width=14,
+    ):
         """
         Initialization of a Conv-LSTM network.
         
@@ -71,7 +80,7 @@ class ConvLSTMNet(nn.Module):
 
         ## Hyperparameters
         self.layers_per_block = layers_per_block
-        self.hidden_channels  = hidden_channels
+        self.hidden_channels = hidden_channels
         self.output_dim = output_dim
         self.num_blocks = len(layers_per_block)
         assert self.num_blocks == len(hidden_channels), "Invalid number of blocks."
@@ -82,56 +91,72 @@ class ConvLSTMNet(nn.Module):
 
         ## Module type of convolutional LSTM layers
 
-        if cell == "convlstm": # standard convolutional LSTM
+        if cell == "convlstm":  # standard convolutional LSTM
 
             Cell = lambda in_channels, out_channels: ConvLSTMCell(
-            input_channels = in_channels, hidden_channels = out_channels,
-            kernel_size = kernel_size, bias = bias)
+                input_channels=in_channels,
+                hidden_channels=out_channels,
+                kernel_size=kernel_size,
+                bias=bias,
+            )
 
-        elif cell == "convttlstm": # convolutional tensor-train LSTM
+        elif cell == "convttlstm":  # convolutional tensor-train LSTM
 
             Cell = lambda in_channels, out_channels: ConvTTLSTMCell(
-                input_channels = in_channels, hidden_channels = out_channels,
-                order = cell_params["order"], steps = cell_params["steps"], ranks = cell_params["rank"], 
-                kernel_size = kernel_size, bias = bias)
+                input_channels=in_channels,
+                hidden_channels=out_channels,
+                order=cell_params["order"],
+                steps=cell_params["steps"],
+                ranks=cell_params["rank"],
+                kernel_size=kernel_size,
+                bias=bias,
+            )
         else:
             raise NotImplementedError
 
         ## Construction of convolutional tensor-train LSTM network
 
-        # stack the convolutional-LSTM layers with skip connections 
+        # stack the convolutional-LSTM layers with skip connections
         self.layers = nn.ModuleDict()
         for b in range(self.num_blocks):
             for l in range(layers_per_block[b]):
                 # number of input channels to the current layer
-                if l > 0: 
+                if l > 0:
                     channels = hidden_channels[b]
-                elif b == 0: # if l == 0 and b == 0:
+                elif b == 0:  # if l == 0 and b == 0:
                     channels = input_channels
-                else: # if l == 0 and b > 0:
-                    channels = hidden_channels[b-1]
+                else:  # if l == 0 and b > 0:
+                    channels = hidden_channels[b - 1]
                     if b > self.skip_stride:
-                        channels += hidden_channels[b-1-self.skip_stride] 
+                        channels += hidden_channels[b - 1 - self.skip_stride]
 
-                lid = "b{}l{}".format(b, l) # layer ID
+                lid = "b{}l{}".format(b, l)  # layer ID
                 self.layers[lid] = Cell(channels, hidden_channels[b])
 
         # number of input channels to the last layer (output layer)
         channels = hidden_channels[-1]
         if self.num_blocks >= self.skip_stride:
-            channels += hidden_channels[-1-self.skip_stride]
+            channels += hidden_channels[-1 - self.skip_stride]
 
-        self.layers["output"] = nn.Conv1d(channels, input_channels, 
-            kernel_size = 1, padding = 0, bias = True)
-       # self.layers["output"] = nn.Linear(channels,self.output_dim)
-        self.final_layer=nn.Linear(input_signal_width,self.output_dim)
+        self.layers["output"] = nn.Conv1d(
+            channels, input_channels, kernel_size=1, padding=0, bias=True
+        )
+        # self.layers["output"] = nn.Linear(channels,self.output_dim)
+        self.final_layer = nn.Linear(input_signal_width, self.output_dim)
 
-
-    def forward(self, inputs, input_frames=20, future_frames=1, output_frames=1,channels=1, 
-        teacher_forcing = False, scheduled_sampling_ratio = 0):
+    def forward(
+        self,
+        inputs,
+        input_frames=20,
+        future_frames=1,
+        output_frames=1,
+        channels=1,
+        teacher_forcing=False,
+        scheduled_sampling_ratio=0,
+    ):
         batch_size, input_frames, height = inputs.size()
         output_frames = input_frames
-        inputs = torch.reshape(inputs,(batch_size, input_frames,channels, height))
+        inputs = torch.reshape(inputs, (batch_size, input_frames, channels, height))
         """
         Computation of Convolutional LSTM network.
         
@@ -162,12 +187,16 @@ class ConvLSTMNet(nn.Module):
             Output frames of the convolutional-LSTM module.
         """
 
-        # compute the teacher forcing mask 
+        # compute the teacher forcing mask
         if teacher_forcing and scheduled_sampling_ratio > 1e-6:
             # generate the teacher_forcing mask (4-th order)
-            teacher_forcing_mask = torch.bernoulli(scheduled_sampling_ratio * 
-                torch.ones(inputs.size(0), future_frames - 1, 1, 1, 1, device = inputs.device))
-        else: # if not teacher_forcing or scheduled_sampling_ratio < 1e-6:
+            teacher_forcing_mask = torch.bernoulli(
+                scheduled_sampling_ratio
+                * torch.ones(
+                    inputs.size(0), future_frames - 1, 1, 1, 1, device=inputs.device
+                )
+            )
+        else:  # if not teacher_forcing or scheduled_sampling_ratio < 1e-6:
             teacher_forcing = False
 
         # the number of time steps in the computational graph
@@ -176,36 +205,37 @@ class ConvLSTMNet(nn.Module):
 
         for t in range(total_steps):
             # input_: 4-th order tensor of size [batch_size, input_channels, height, width]
-            if t < input_frames: 
+            if t < input_frames:
                 input_ = inputs[:, t]
             elif not teacher_forcing:
-                input_ = outputs[t-1]
-            else: # if t >= input_frames and teacher_forcing:
+                input_ = outputs[t - 1]
+            else:  # if t >= input_frames and teacher_forcing:
                 mask = teacher_forcing_mask[:, t - input_frames]
-                input_ = inputs[:, t] * mask + outputs[t-1] * (1 - mask)
+                input_ = inputs[:, t] * mask + outputs[t - 1] * (1 - mask)
 
-            first_step = (t == 0)
-            queue = [] # previous outputs for skip connection
+            first_step = t == 0
+            queue = []  # previous outputs for skip connection
             for b in range(self.num_blocks):
                 for l in range(self.layers_per_block[b]):
-                    lid = "b{}l{}".format(b, l) # layer ID
-                    input_ = self.layers[lid](input_, first_step = first_step)
+                    lid = "b{}l{}".format(b, l)  # layer ID
+                    input_ = self.layers[lid](input_, first_step=first_step)
 
                 queue.append(input_)
                 if b >= self.skip_stride:
-                    input_ = torch.cat([input_, queue.pop(0)], dim = 1) # concat over the channels
+                    input_ = torch.cat(
+                        [input_, queue.pop(0)], dim=1
+                    )  # concat over the channels
 
             # map the hidden states to predictive frames (with optional sigmoid function)
-            
+
             outputs[t] = self.layers["output"](input_)
             if self.output_sigmoid:
                 outputs[t] = torch.sigmoid(outputs[t])
         # return the last output_frames of the outputs
         outputs = outputs[-output_frames:]
-      
+
         # 5-th order tensor of size [batch_size, output_frames, channels, height, width]
-        outputs = torch.stack([outputs[t] for t in range(output_frames)], dim = 1)
+        outputs = torch.stack([outputs[t] for t in range(output_frames)], dim=1)
         outputs = self.final_layer(outputs)
 
-        return outputs[:,:,:,0]
-
+        return outputs[:, :, :, 0]

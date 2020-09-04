@@ -9,14 +9,19 @@ import torch.nn.modules.utils as utils
 
 ## Convolutional Tensor-Train LSTM Module
 class ConvTTLSTMCell(nn.Module):
-
-    def __init__(self,
-        # interface of the Conv-TT-LSTM 
-        input_channels, hidden_channels,
+    def __init__(
+        self,
+        # interface of the Conv-TT-LSTM
+        input_channels,
+        hidden_channels,
         # convolutional tensor-train network
-        order = 3, steps = 3, ranks = 8,
+        order=3,
+        steps=3,
+        ranks=8,
         # convolutional operations
-        kernel_size = 5, bias = True):
+        kernel_size=5,
+        bias=True,
+    ):
         """
         Initialization of convolutional tensor-train LSTM cell.
 
@@ -52,7 +57,7 @@ class ConvTTLSTMCell(nn.Module):
         super(ConvTTLSTMCell, self).__init__()
 
         ## Input/output interfaces
-        self.input_channels  = input_channels
+        self.input_channels = input_channels
         self.hidden_channels = hidden_channels
 
         ## Convolutional tensor-train network
@@ -62,27 +67,37 @@ class ConvTTLSTMCell(nn.Module):
         self.lags = steps - order + 1
 
         ## Convolutional operations
-        kernel_size =  kernel_size # utils._pair(kernel_size)
-        padding     = kernel_size//2 #kernel_size[0] // 2, kernel_size[1] // 2
+        kernel_size = kernel_size  # utils._pair(kernel_size)
+        padding = kernel_size // 2  # kernel_size[0] // 2, kernel_size[1] // 2
 
         Conv2d = lambda in_channels, out_channels: nn.Conv1d(
-            in_channels = in_channels, out_channels = out_channels, 
-            kernel_size = kernel_size, padding = padding, bias = bias)
+            in_channels=in_channels,
+            out_channels=out_channels,
+            kernel_size=kernel_size,
+            padding=padding,
+            bias=bias,
+        )
 
         Conv3d = lambda in_channels, out_channels: nn.Conv2d(
-            in_channels = in_channels, out_channels = out_channels, bias = bias,
-            kernel_size = (kernel_size,self.lags) , padding = (padding,0))
+            in_channels=in_channels,
+            out_channels=out_channels,
+            bias=bias,
+            kernel_size=(kernel_size, self.lags),
+            padding=(padding, 0),
+        )
 
         ## Convolutional layers
-        self.layers  = nn.ModuleList()
+        self.layers = nn.ModuleList()
         self.layers_ = nn.ModuleList()
         for l in range(order):
-            self.layers.append(Conv2d(
-                in_channels  = ranks if l < order - 1 else ranks + input_channels, 
-                out_channels = ranks if l < order - 1 else 4 * hidden_channels))
+            self.layers.append(
+                Conv2d(
+                    in_channels=ranks if l < order - 1 else ranks + input_channels,
+                    out_channels=ranks if l < order - 1 else 4 * hidden_channels,
+                )
+            )
 
-            self.layers_.append(Conv3d(
-                in_channels = hidden_channels, out_channels = ranks))
+            self.layers_.append(Conv3d(in_channels=hidden_channels, out_channels=ranks))
 
     def initialize(self, inputs):
         """ 
@@ -93,18 +108,21 @@ class ConvTTLSTMCell(nn.Module):
         inputs: 4-th order tensor of size [batch_size, input_channels, height, width]
             Input tensor to the convolutional tensor-train LSTM cell.
         """
-        device = inputs.device # "cpu" or "cuda"
+        device = inputs.device  # "cpu" or "cuda"
         batch_size, _, height = inputs.size()
 
         # initialize both hidden and cell states to all zeros
-        self.hidden_states  = [torch.zeros(batch_size, self.hidden_channels, 
-            height, device = device) for t in range(self.steps)]
-        self.hidden_pointer = 0 # pointing to the position to be updated
+        self.hidden_states = [
+            torch.zeros(batch_size, self.hidden_channels, height, device=device)
+            for t in range(self.steps)
+        ]
+        self.hidden_pointer = 0  # pointing to the position to be updated
 
-        self.cell_states = torch.zeros(batch_size, 
-            self.hidden_channels, height, device = device)
+        self.cell_states = torch.zeros(
+            batch_size, self.hidden_channels, height, device=device
+        )
 
-    def forward(self, inputs, first_step = False):
+    def forward(self, inputs, first_step=False):
         """
         Computation of the convolutional tensor-train LSTM cell.
         
@@ -123,27 +141,32 @@ class ConvTTLSTMCell(nn.Module):
             Hidden states (and outputs) of the convolutional-LSTM cell.
         """
 
-        if first_step: self.initialize(inputs) # intialize the states at the first step
+        if first_step:
+            self.initialize(inputs)  # intialize the states at the first step
 
         ## (1) Convolutional tensor-train module
         for l in range(self.order):
-            input_pointer = self.hidden_pointer if l == 0 else (input_pointer + 1) % self.steps
+            input_pointer = (
+                self.hidden_pointer if l == 0 else (input_pointer + 1) % self.steps
+            )
 
-            input_states = self.hidden_states[input_pointer:] + self.hidden_states[:input_pointer]
-            input_states = input_states[:self.lags]
+            input_states = (
+                self.hidden_states[input_pointer:] + self.hidden_states[:input_pointer]
+            )
+            input_states = input_states[: self.lags]
 
-            input_states = torch.stack(input_states, dim = -1)
+            input_states = torch.stack(input_states, dim=-1)
             input_states = self.layers_[l](input_states)
-            input_states = torch.squeeze(input_states, dim = -1)
+            input_states = torch.squeeze(input_states, dim=-1)
 
             if l == 0:
                 temp_states = input_states
-            else: # if l > 0:
-                temp_states = input_states + self.layers[l-1](temp_states)
-                
+            else:  # if l > 0:
+                temp_states = input_states + self.layers[l - 1](temp_states)
+
         ## (2) Standard convolutional-LSTM module
-        concat_conv = self.layers[-1](torch.cat([inputs, temp_states], dim = 1))
-        cc_i, cc_f, cc_o, cc_g = torch.split(concat_conv, self.hidden_channels, dim = 1)
+        concat_conv = self.layers[-1](torch.cat([inputs, temp_states], dim=1))
+        cc_i, cc_f, cc_o, cc_g = torch.split(concat_conv, self.hidden_channels, dim=1)
 
         i = torch.sigmoid(cc_i)
         f = torch.sigmoid(cc_f)
@@ -154,14 +177,13 @@ class ConvTTLSTMCell(nn.Module):
         outputs = o * torch.tanh(self.cell_states)
         self.hidden_states[self.hidden_pointer] = outputs
         self.hidden_pointer = (self.hidden_pointer + 1) % self.order
-        
+
         return outputs
 
 
 ## Standard Convolutional-LSTM Module
 class ConvLSTMCell(nn.Module):
-
-    def __init__(self, input_channels, hidden_channels, kernel_size = 5, bias = True):
+    def __init__(self, input_channels, hidden_channels, kernel_size=5, bias=True):
         """
         Construction of convolutional-LSTM cell.
         
@@ -184,16 +206,19 @@ class ConvLSTMCell(nn.Module):
         """
         super(ConvLSTMCell, self).__init__()
 
-        self.input_channels  = input_channels
+        self.input_channels = input_channels
         self.hidden_channels = hidden_channels
 
         kernel_size = utils._pair(kernel_size)
-        padding     = kernel_size[0] // 2, kernel_size[1] // 2
+        padding = kernel_size[0] // 2, kernel_size[1] // 2
 
         self.conv = nn.Conv2d(
-            in_channels  = input_channels + hidden_channels, 
-            out_channels = 4 * hidden_channels,
-            kernel_size = kernel_size, padding = padding, bias = bias)
+            in_channels=input_channels + hidden_channels,
+            out_channels=4 * hidden_channels,
+            kernel_size=kernel_size,
+            padding=padding,
+            bias=bias,
+        )
 
         # Note: hidden/cell states are not intialized in construction
         self.hidden_states, self.cell_state = None, None
@@ -207,16 +232,18 @@ class ConvLSTMCell(nn.Module):
         inputs: a 4-th order tensor of size [batch_size, channels, height, width]
             Input tensor of convolutional-LSTM cell.
         """
-        device = inputs.device # "cpu" or "cuda"
+        device = inputs.device  # "cpu" or "cuda"
         batch_size, _, height = inputs.size()
 
         # initialize both hidden and cell states to all zeros
-        self.hidden_states = torch.zeros(batch_size, 
-            self.hidden_channels, height,  device = device)
-        self.cell_states = torch.zeros(batch_size, 
-            self.hidden_channels, height,  device = device)
+        self.hidden_states = torch.zeros(
+            batch_size, self.hidden_channels, height, device=device
+        )
+        self.cell_states = torch.zeros(
+            batch_size, self.hidden_channels, height, device=device
+        )
 
-    def forward(self, inputs, first_step = False):
+    def forward(self, inputs, first_step=False):
         """
         Computation of convolutional-LSTM cell.
         
@@ -234,17 +261,18 @@ class ConvLSTMCell(nn.Module):
         hidden_states: another 4-th order tensor of size [batch_size, hidden_channels, height, width]
             Hidden states (and outputs) of the convolutional-LSTM cell.
         """
-        if first_step: self.initialize(inputs)
+        if first_step:
+            self.initialize(inputs)
 
-        concat_conv = self.conv(torch.cat([inputs, self.hidden_states], dim = 1))
-        cc_i, cc_f, cc_o, cc_g = torch.split(concat_conv, self.hidden_channels, dim = 1)
+        concat_conv = self.conv(torch.cat([inputs, self.hidden_states], dim=1))
+        cc_i, cc_f, cc_o, cc_g = torch.split(concat_conv, self.hidden_channels, dim=1)
 
         i = torch.sigmoid(cc_i)
         f = torch.sigmoid(cc_f)
         o = torch.sigmoid(cc_o)
         g = torch.tanh(cc_g)
 
-        self.cell_states   = f * self.cell_states + i * g
+        self.cell_states = f * self.cell_states + i * g
         self.hidden_states = o * torch.tanh(self.cell_states)
-        
-        return self.hidden_states 
+
+        return self.hidden_states

@@ -4,9 +4,11 @@ import numpy as np
 import abc
 
 from evaluation import (
-    mse_np, binary_crossentropy_np, hinge_np,
+    mse_np,
+    binary_crossentropy_np,
+    hinge_np,
     # mae_np, squared_hinge_np,
-    )
+)
 
 # synchronize output from TensorFlow initialization via Keras backend
 if g.comm is not None:
@@ -16,13 +18,14 @@ if g.comm is not None:
 
 # Requirement: larger value must mean disruption more likely.
 class Target(object):
-    activation = 'linear'
-    loss = 'mse'
+    activation = "linear"
+    loss = "mse"
 
     @abc.abstractmethod
     def loss_np(y_true, y_pred):
         from conf import conf
-        return conf['model']['loss_scale_factor']*mse_np(y_true, y_pred)
+
+        return conf["model"]["loss_scale_factor"] * mse_np(y_true, y_pred)
 
     @abc.abstractmethod
     def remapper(ttd, T_warning):
@@ -34,18 +37,20 @@ class Target(object):
 
 
 class BinaryTarget(Target):
-    activation = 'sigmoid'
-    loss = 'binary_crossentropy'
+    activation = "sigmoid"
+    loss = "binary_crossentropy"
 
     @staticmethod
     def loss_np(y_true, y_pred):
         from conf import conf
-        return (conf['model']['loss_scale_factor']
-                * binary_crossentropy_np(y_true, y_pred))
+
+        return conf["model"]["loss_scale_factor"] * binary_crossentropy_np(
+            y_true, y_pred
+        )
 
     @staticmethod
     def remapper(ttd, T_warning, as_array_of_shots=True):
-        binary_ttd = 0*ttd
+        binary_ttd = 0 * ttd
         mask = ttd < np.log10(T_warning)
         binary_ttd[mask] = 1.0
         binary_ttd[~mask] = 0.0
@@ -57,13 +62,14 @@ class BinaryTarget(Target):
 
 
 class TTDTarget(Target):
-    activation = 'linear'
-    loss = 'mse'
+    activation = "linear"
+    loss = "mse"
 
     @staticmethod
     def loss_np(y_true, y_pred):
         from conf import conf
-        return conf['model']['loss_scale_factor']*mse_np(y_true, y_pred)
+
+        return conf["model"]["loss_scale_factor"] * mse_np(y_true, y_pred)
 
     @staticmethod
     def remapper(ttd, T_warning):
@@ -77,8 +83,8 @@ class TTDTarget(Target):
 
 
 class TTDInvTarget(Target):
-    activation = 'linear'
-    loss = 'mse'
+    activation = "linear"
+    loss = "mse"
 
     @staticmethod
     def loss_np(y_true, y_pred):
@@ -87,10 +93,10 @@ class TTDInvTarget(Target):
     @staticmethod
     def remapper(ttd, T_warning):
         eps = 1e-4
-        ttd = 10**(ttd)
+        ttd = 10 ** (ttd)
         mask = ttd < T_warning
         ttd[~mask] = T_warning
-        ttd = (1.0)/(ttd+eps)  # T_warning
+        ttd = (1.0) / (ttd + eps)  # T_warning
         return ttd
 
     @staticmethod
@@ -99,17 +105,18 @@ class TTDInvTarget(Target):
 
 
 class TTDLinearTarget(Target):
-    activation = 'linear'
-    loss = 'mse'
+    activation = "linear"
+    loss = "mse"
 
     @staticmethod
     def loss_np(y_true, y_pred):
         from conf import conf
-        return conf['model']['loss_scale_factor']*mse_np(y_true, y_pred)
+
+        return conf["model"]["loss_scale_factor"] * mse_np(y_true, y_pred)
 
     @staticmethod
     def remapper(ttd, T_warning):
-        ttd = 10**(ttd)
+        ttd = 10 ** (ttd)
         mask = ttd < T_warning
         ttd[~mask] = 0  # T_warning
         ttd[mask] = T_warning - ttd[mask]  # T_warning
@@ -123,12 +130,13 @@ class TTDLinearTarget(Target):
 # implements a "maximum" driven loss function. Only the maximal value in the
 # time sequence is punished. Also implements class weighting
 class MaxHingeTarget(Target):
-    activation = 'linear'
+    activation = "linear"
     fac = 1.0
 
     @staticmethod
     def loss(y_true, y_pred):
         from conf import conf
+
         fac = MaxHingeTarget.fac
         # overall_fac =
         # np.prod(np.array(K.shape(y_pred)[1:]).astype(np.float32))
@@ -136,40 +144,41 @@ class MaxHingeTarget(Target):
         max_val = K.max(y_pred, axis=-2)  # temporal axis!
         max_val1 = K.repeat(max_val, K.shape(y_pred)[-2])
         mask = K.cast(K.equal(max_val1, y_pred), K.floatx())
-        y_pred1 = mask * y_pred + (1-mask) * y_true
+        y_pred1 = mask * y_pred + (1 - mask) * y_true
         weight_mask = K.mean(y_true, axis=-1)
-        weight_mask = K.cast(K.greater(weight_mask, 0.0),
-                             K.floatx())  # positive label!
-        weight_mask = fac*weight_mask + (1 - weight_mask)
+        weight_mask = K.cast(K.greater(weight_mask, 0.0), K.floatx())  # positive label!
+        weight_mask = fac * weight_mask + (1 - weight_mask)
         # return weight_mask*squared_hinge(y_true, y_pred1)
-        return conf['model']['loss_scale_factor'] * \
-            overall_fac*weight_mask*hinge(y_true, y_pred1)
+        return (
+            conf["model"]["loss_scale_factor"]
+            * overall_fac
+            * weight_mask
+            * hinge(y_true, y_pred1)
+        )
 
     @staticmethod
     def loss_np(y_true, y_pred):
         from conf import conf
+
         fac = MaxHingeTarget.fac
         # print(y_pred.shape)
         overall_fac = np.prod(np.array(y_pred.shape).astype(np.float32))
         max_val = np.max(y_pred, axis=-2)  # temporal axis!
-        max_val = np.reshape(
-            max_val, max_val.shape[:-1] + (1,) + (max_val.shape[-1],))
+        max_val = np.reshape(max_val, max_val.shape[:-1] + (1,) + (max_val.shape[-1],))
         max_val = np.tile(max_val, (1, y_pred.shape[-2], 1))
         mask = np.equal(max_val, y_pred)
         mask = mask.astype(np.float32)
-        y_pred = mask * y_pred + (1-mask) * y_true
-        weight_mask = np.greater(
-            y_true, 0.0).astype(
-            np.float32)  # positive label!
-        weight_mask = fac*weight_mask + (1 - weight_mask)
+        y_pred = mask * y_pred + (1 - mask) * y_true
+        weight_mask = np.greater(y_true, 0.0).astype(np.float32)  # positive label!
+        weight_mask = fac * weight_mask + (1 - weight_mask)
         # return np.mean(
         #  weight_mask*np.square(np.maximum(1. - y_true * y_pred, 0.)))
         # , axis=-1)
         # only during training, here we want to completely sum up over all
         # instances
-        return (conf['model']['loss_scale_factor']
-                * np.mean(overall_fac * weight_mask
-                          * np.maximum(1. - y_true * y_pred, 0.)))
+        return conf["model"]["loss_scale_factor"] * np.mean(
+            overall_fac * weight_mask * np.maximum(1.0 - y_true * y_pred, 0.0)
+        )
 
     # def _loss_tensor_old(y_true, y_pred):
     #     max_val = K.max(y_pred) #temporal axis!
@@ -179,7 +188,7 @@ class MaxHingeTarget(Target):
 
     @staticmethod
     def remapper(ttd, T_warning, as_array_of_shots=True):
-        binary_ttd = 0*ttd
+        binary_ttd = 0 * ttd
         mask = ttd < np.log10(T_warning)
         binary_ttd[mask] = 1.0
         binary_ttd[~mask] = -1.0
@@ -188,24 +197,29 @@ class MaxHingeTarget(Target):
     @staticmethod
     def threshold_range(T_warning):
         return np.concatenate(
-            (np.linspace(-2, -1.06, 100), np.linspace(-1.06, -0.96, 100),
-             np.linspace(-0.96, 2, 50)))
+            (
+                np.linspace(-2, -1.06, 100),
+                np.linspace(-1.06, -0.96, 100),
+                np.linspace(-0.96, 2, 50),
+            )
+        )
 
 
 class HingeTarget(Target):
-    activation = 'linear'
+    activation = "linear"
 
-    loss = 'hinge'  # hinge
+    loss = "hinge"  # hinge
 
     @staticmethod
     def loss_np(y_true, y_pred):
         from conf import conf
-        return conf['model']['loss_scale_factor']*hinge_np(y_true, y_pred)
+
+        return conf["model"]["loss_scale_factor"] * hinge_np(y_true, y_pred)
         # return squared_hinge_np(y_true, y_pred)
 
     @staticmethod
     def remapper(ttd, T_warning, as_array_of_shots=True):
-        binary_ttd = 0*ttd
+        binary_ttd = 0 * ttd
         mask = ttd < np.log10(T_warning)
         binary_ttd[mask] = 1.0
         binary_ttd[~mask] = -1.0
@@ -214,5 +228,9 @@ class HingeTarget(Target):
     @staticmethod
     def threshold_range(T_warning):
         return np.concatenate(
-            (np.linspace(-2, -1.06, 100), np.linspace(-1.06, -0.96, 100),
-             np.linspace(-0.96, 2, 50)))
+            (
+                np.linspace(-2, -1.06, 100),
+                np.linspace(-1.06, -0.96, 100),
+                np.linspace(-0.96, 2, 50),
+            )
+        )
