@@ -4,17 +4,14 @@ from hyperparameters import (
 )
 import sys
 import os
-import getpass
 import numpy as np
-import conf
 
-# dir_path = "/{}/{}/hyperparams/".format(
-#    conf['fs_path'], getpass.getuser())
-if len(sys.argv) <= 1:
-    dir_path = dir_path + os.listdir(dir_path)[0] + "/"
-    print("using default dir {}".format(dir_path))
-else:
-    dir_path = sys.argv[1]
+# if len(sys.argv) <= 1:
+#     dir_path = dir_path + os.listdir(dir_path)[0] + "/"
+#     print("using default dir {}".format(dir_path))
+# else:
+
+dir_path = sys.argv[1]
 print("Check tuning results for ", dir_path, "...............")
 
 

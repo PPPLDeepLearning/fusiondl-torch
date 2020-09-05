@@ -335,7 +335,7 @@ class PerformanceAnalyzer:
         if verbose:
             print(
                 "total: {}, tp: {} fp: {} fn: {} tn: {} ".format(
-                    len(all_preds), TPs, FPs, FNs, TNs,
+                    len(all_preds), TPs, FPs, FNs, TNs
                 ),
                 "early: {} late: {} disr: {} nondisr: {}".format(
                     earlies, lates, disr, nondisr

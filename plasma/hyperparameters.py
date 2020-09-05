@@ -1,7 +1,6 @@
 import numpy as np
 import random
 import abc
-import yaml
 import os
 
 
@@ -100,8 +99,8 @@ class HyperparamExperiment(object):
         self.logs_path = path + "/epoch_train_log.txt"
         self.raw_logs_path = path[:-1] + ".out"
         self.changed_path = os.path.join(path, "changed_params.out")
-        with open(os.path.join(self.path, conf_name), "r") as yaml_file:
-            conf = yaml.load(yaml_file, Loader=yaml.SafeLoader)
+        # with open(os.path.join(self.path, conf_name), "r") as yaml_file:
+        #     conf = yaml.load(yaml_file, Loader=yaml.SafeLoader)
         self.name_to_monitor = "Val ROC"  # conf['callbacks']['monitor']
         self.load_data()
         self.get_changed()
@@ -146,11 +145,11 @@ class HyperparamExperiment(object):
                 self.dat = []
                 with open(self.logs_path, "r") as file:
                     lines = file.readlines()
-                    for l in lines[1:]:
-                        l = l.strip().split()
-                        self.dat.append(l)
-                        self.epochs.append(float(l[0]))
-                        self.values.append(float(l[3]))
+                    for line in lines[1:]:
+                        l_stripped = line.strip().split()
+                        self.dat.append(l_stripped)
+                        self.epochs.append(float(l_stripped[0]))
+                        self.values.append(float(l_stripped[3]))
                     print("loaded logs")
                     print(self.epochs)
                     print(self.values)

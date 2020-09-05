@@ -466,10 +466,11 @@ class Shot(object):
                 if (
                     signal.is_ip
                     or ("q95" in signal.description)
-                    or garbage == False
-                    or sig == None
+                    or garbage is False
+                    or sig is None
                 ):
-                    ########################Not allow a shot if it is missing plasma current information, or q95 is missing
+                    # Not allow a shot if it is missing plasma current information,
+                    # or if q95 is missing
                     return None, None, None, None, False
                 else:
                     t = np.arange(0, 20, 0.001)
@@ -490,7 +491,7 @@ class Shot(object):
                         self.machine
                     )
                     if self.t_disrupt > t_max_total:
-                        if garbage == False:
+                        if garbage is False:
                             print(
                                 "Shot {}: disruption event ".format(self.number),
                                 "is not contained in valid time region of ",
@@ -503,7 +504,8 @@ class Shot(object):
                             non_valid_signals += 1
                             t = np.arange(0, 20, 0.001)
                             sig = np.zeros((t.shape[0], sig.shape[1]))
-                            # Setting the entire channel to zero to prevent any peeking into possible disruptions from this early ended channel
+                            # Setting the entire channel to zero to prevent any peeking
+                            # into possible disruptions from this early ended channel
                     else:
                         t_max = np.max(t) + signal.get_data_avail_tolerance(
                             self.machine

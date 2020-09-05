@@ -1,8 +1,7 @@
 from hyperparameters import (
     CategoricalHyperparam,
     ContinuousHyperparam,
-    LogContinuousHyperparam,
-    IntegerHyperparam,
+    LogContinuousHyperparam,  # IntegerHyperparam,
 )
 from batch_jobs import (
     start_slurm_job,

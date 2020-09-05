@@ -1,41 +1,27 @@
 from __future__ import print_function
-import matplotlib
 
-matplotlib.use("Agg")
-import matplotlib.pyplot as plt
-from torchsummary import summary
+# from torchsummary import summary
 
 import numpy as np
-import sys
-
-if sys.version_info[0] < 3:
-    from itertools import imap
 
 # leading to import errors:
 # from hyperopt import hp, STATUS_OK
 # from hyperas.distributions import conditional
 
-import time
 import datetime
 import os
 from functools import partial
-import pathos.multiprocessing as mp
 
-from conf import conf
-from loader import Loader, ProcessGenerator
 from performance import PerformanceAnalyzer
-from evaluation import *
+from evaluation import get_loss_from_list
 from downloading import makedirs_process_safe
-
-
-import hashlib
 
 import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import torch.optim as opt
 from torch.nn.utils import weight_norm
-from convlstmnet import *
+from convlstmnet import ConvLSTMNet
 
 model_filename = "torch_model.pt"
 
@@ -62,7 +48,7 @@ class FLSTM(nn.Module):
         self.dropout = dropout
         self.rnn_layers = rnn_layers
         self.output_dim = output_dim
-        if device == None:
+        if device is None:
             self.device = torch.device("cuda")
         else:
             self.device = device
@@ -74,7 +60,8 @@ class FLSTM(nn.Module):
 
     def forward(self, x):
         #   x = self.pre_rnn_network(x)
-        #   x,_ = nn.LSTM(self.input_dim,self.rnn_size,batch_first=True,dropout=self.dropout,num_layers=self.rnn_layers).to(self.device)(x)
+        #   x,_ = nn.LSTM(self.input_dim,self.rnn_size,batch_first=True,
+        #  dropout=self.dropout,num_layers=self.rnn_layers).to(self.device)(x)
         y, _ = self.rnn(x)
         x = y
         x = self.dropout_layer(x)
@@ -313,49 +300,11 @@ class TCN(nn.Module):
         )
         self.linear = nn.Linear(num_channels[-1], output_size)
 
-    #         self.sig = nn.Sigmoid()
-
     def forward(self, x):
         # x needs to have dimension (N, C, L) in order to be passed into CNN
         output = self.tcn(x.transpose(1, 2)).transpose(1, 2)
         output = self.linear(output)  # .transpose(1,2)).transpose(1,2)
         return output
-
-
-#         return self.sig(output)
-
-
-# def train(model,data_gen,lr=0.001,iters = 100):
-#     log_step = int(round(iters*0.1))
-#     optimizer = opt.Adam(model.parameters(),lr = lr)
-#     model.train()
-#     total_loss = 0
-#     count = 0
-#     loss_fn = nn.MSELoss(size_average=False)
-#     for i in range(iters):
-#         x_,y_,mask_ = data_gen()
-# #         print(y)
-#         x, y, mask = Variable(torch.from_numpy(x_).float()), Variable(torch.from_numpy(y_).float()),Variable(torch.from_numpy(mask_).byte())
-# #         print(y)
-#         optimizer.zero_grad()
-# #         output = model(x.unsqueeze(0)).squeeze(0)
-#         output = model(x)#.unsqueeze(0)).squeeze(0)
-#         output_masked = torch.masked_select(output,mask)
-#         y_masked = torch.masked_select(y,mask)
-# #         print(y.shape,output.shape)
-#         loss = loss_fn(output_masked,y_masked)
-#         total_loss += loss.data[0]
-#         count += output.size(0)
-
-# #         if args.clip > 0:
-# #             torch.nn.utils.clip_grad_norm(model.parameters(), args.clip)
-#         loss.backward()
-#         optimizer.step()
-#         if i > 0 and i % log_step == 0:
-#             cur_loss = total_loss / count
-#             print("Epoch {:2d} | lr {:.5f} | loss {:.5f}".format(0,lr, cur_loss))
-#             total_loss = 0.0
-#             count = 0
 
 
 class TimeDistributed(nn.Module):
@@ -398,7 +347,7 @@ def build_torch_model(conf):
     n_scalars, n_profiles, profile_size = get_signal_dimensions(conf)
     print("n_scalars,n_profiles,profile_size=", n_scalars, n_profiles, profile_size)
     dim = n_scalars + n_profiles * profile_size
-    input_size = dim
+    # input_size = dim
     output_size = 1
     # intermediate_dim = 15
     try:
@@ -503,7 +452,8 @@ def get_signal_dimensions(conf):
 
 
 def apply_model_to_np(model, x, device=None):
-    #     return model(Variable(torch.from_numpy(x).float()).unsqueeze(0)).squeeze(0).data.numpy()
+    #     return model(Variable(torch.from_numpy(x).float()).unsqueeze(0)).
+    #                        squeeze(0).data.numpy()
     return (
         model(Variable(torch.from_numpy(x).float()).to(device))
         .to(torch.device("cpu"))
@@ -515,8 +465,8 @@ def make_predictions(
     conf, shot_list, loader, custom_path=None, inference_model=None, device=None
 ):
     generator = loader.inference_batch_generator_full_shot(shot_list)
-    if inference_model == None:
-        if custom_path == None:
+    if inference_model is None:
+        if custom_path is None:
             model_path = get_model_path(conf)
         else:
             model_path = custom_path
@@ -533,7 +483,8 @@ def make_predictions(
 
     while True:
         x, y, mask, disr, lengths, num_so_far, num_total = next(generator)
-        # x, y, mask = Variable(torch.from_numpy(x_).float()), Variable(torch.from_numpy(y_).float()),Variable(torch.from_numpy(mask_).byte())
+        # x, y, mask = Variable(torch.from_numpy(x_).float()),
+        #  Variable(torch.from_numpy(y_).float()),Variable(torch.from_numpy(mask_).byte())
         output = apply_model_to_np(inference_model, x, device=device)
         for batch_idx in range(x.shape[0]):
             curr_length = lengths[batch_idx]
@@ -615,12 +566,12 @@ def train_epoch(model, data_gen, optimizer, loss_fn, device=None):
 
 
 def train(conf, shot_list_train, shot_list_validate, loader):
-
     np.random.seed(1)
-    use_cuda = True  # False
+    # use_cuda = True  # False
     device = torch.device("cuda")
 
-    # data_gen = ProcessGenerator(partial(loader.training_batch_generator_full_shot_partial_reset,shot_list=shot_list_train)())
+    # data_gen = ProcessGenerator(partial(
+    # loader.training_batch_generator_full_shot_partial_reset,shot_list=shot_list_train)()
     data_gen = partial(
         loader.training_batch_generator_full_shot_partial_reset,
         shot_list=shot_list_train,
@@ -641,9 +592,9 @@ def train(conf, shot_list_train, shot_list_validate, loader):
     lr_decay = conf["model"]["lr_decay"]
     lr_decay_factor = conf["model"]["lr_decay_factor"]
     lr_decay_patience = conf["model"]["lr_decay_patience"]
-    batch_size = conf["training"]["batch_size"]
+    # batch_size = conf["training"]["batch_size"]
     lr = conf["model"]["lr"]
-    clipnorm = conf["model"]["clipnorm"]
+    # clipnorm = conf["model"]["clipnorm"]
     e = 0
 
     if conf["callbacks"]["mode"] == "max":
@@ -656,8 +607,8 @@ def train(conf, shot_list_train, shot_list_validate, loader):
     scheduler = opt.lr_scheduler.ExponentialLR(optimizer, lr_decay)
     train_model.train()
     not_updated = 0
-    total_loss = 0
-    count = 0
+    # total_loss = 0
+    # count = 0
     loss_fn = nn.MSELoss(size_average=True)
     model_path = get_model_path(conf)
     makedirs_process_safe(os.path.dirname(model_path))
@@ -693,7 +644,7 @@ def train(conf, shot_list_train, shot_list_validate, loader):
         )
         best_so_far = cmp_fn(roc_area, best_so_far)
 
-        stop_training = False
+        # stop_training = False
         print("=========Summary======== for epoch{}".format(step))
         print("Training Loss numpy: {:.3e}".format(ave_loss))
         print("Validation Loss: {:.3e}".format(loss))
@@ -722,9 +673,9 @@ def train(conf, shot_list_train, shot_list_validate, loader):
                     param_group["lr"] = lr
         else:
             print("Saving model")
-            not_update = 0
+            # not_update = 0
             # specific_builder.delete_model_weights(train_model,int(round(e)))
-            ################Saving torch model################################
+            # Saving torch model
             torch.save(train_model.state_dict(), model_path)
             torch.save(train_model, model_path[:-3] + "full_model.pt")
         ##################################################################

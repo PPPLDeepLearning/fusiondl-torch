@@ -5,7 +5,8 @@ import torch
 import torch.nn as nn
 from convlstmcell import ConvLSTMCell, ConvTTLSTMCell
 
-## Convolutional-LSTM network
+
+# Convolutional-LSTM network
 class ConvLSTMNet(nn.Module):
     def __init__(
         self,
@@ -31,25 +32,26 @@ class ConvLSTMNet(nn.Module):
     ):
         """
         Initialization of a Conv-LSTM network.
-        
+
         Arguments:
         ----------
         (Hyper-parameters of input interface)
-        input_channels: int 
+        input_channels: int
             The number of channels for input video.
-            Note: 3 for colored video, 1 for gray video. 
+            Note: 3 for colored video, 1 for gray video.
 
         (Hyper-parameters of model architecture)
         layers_per_block: list of ints
-            Number of Conv-LSTM layers in each block. 
+            Number of Conv-LSTM layers in each block.
         hidden_channels: list of ints
             Number of output channels.
-        Note: The length of hidden_channels (or layers_per_block) is equal to number of blocks.
+        Note: The length of hidden_channels (or layers_per_block) is equal to number of
+              blocks.
 
         skip_stride: int
             The stride (in term of blocks) of the skip connections
             default: None, i.e. no skip connection
-        
+
         [cell_params: dictionary
 
             order: int
@@ -62,12 +64,12 @@ class ConvLSTMNet(nn.Module):
                 The tensor-train rank of convolutional tensor-train cells.
                 default: 16
         ]
-        
+
         (Parameters of convolutional operations)
         kernel_size: int or (int, int)
             Size of the (squared) convolutional kernel.
             default: 3
-        bias: bool 
+        bias: bool
             Whether to add bias in the convolutional operation.
             default: True
 
@@ -78,7 +80,7 @@ class ConvLSTMNet(nn.Module):
         """
         super(ConvLSTMNet, self).__init__()
 
-        ## Hyperparameters
+        # Hyperparameters
         self.layers_per_block = layers_per_block
         self.hidden_channels = hidden_channels
         self.output_dim = output_dim
@@ -89,10 +91,9 @@ class ConvLSTMNet(nn.Module):
 
         self.output_sigmoid = output_sigmoid
 
-        ## Module type of convolutional LSTM layers
+        # Module type of convolutional LSTM layers
 
         if cell == "convlstm":  # standard convolutional LSTM
-
             Cell = lambda in_channels, out_channels: ConvLSTMCell(
                 input_channels=in_channels,
                 hidden_channels=out_channels,
@@ -101,7 +102,6 @@ class ConvLSTMNet(nn.Module):
             )
 
         elif cell == "convttlstm":  # convolutional tensor-train LSTM
-
             Cell = lambda in_channels, out_channels: ConvTTLSTMCell(
                 input_channels=in_channels,
                 hidden_channels=out_channels,
@@ -114,7 +114,7 @@ class ConvLSTMNet(nn.Module):
         else:
             raise NotImplementedError
 
-        ## Construction of convolutional tensor-train LSTM network
+        # Construction of convolutional tensor-train LSTM network
 
         # stack the convolutional-LSTM layers with skip connections
         self.layers = nn.ModuleDict()
@@ -159,12 +159,13 @@ class ConvLSTMNet(nn.Module):
         inputs = torch.reshape(inputs, (batch_size, input_frames, channels, height))
         """
         Computation of Convolutional LSTM network.
-        
+
         Arguments:
         ----------
-        inputs: a 5-th order tensor of size [batch_size, input_frames, input_channels, height, width] 
-            Input tensor (video) to the deep Conv-LSTM network. 
-        
+        inputs: a 5-th order tensor of size [batch_size, input_frames, input_channels,
+               height, width]
+            Input tensor (video) to the deep Conv-LSTM network.
+
         input_frames: int
             The number of input frames to the model.
         future_frames: int
@@ -183,7 +184,8 @@ class ConvLSTMNet(nn.Module):
 
         Returns:
         --------
-        outputs: a 5-th order tensor of size [batch_size, output_frames, hidden_channels, height, width]
+        outputs: a 5-th order tensor of size [batch_size,output_frames,hidden_channels,
+               height, width]
             Output frames of the convolutional-LSTM module.
         """
 
@@ -204,7 +206,7 @@ class ConvLSTMNet(nn.Module):
         outputs = [None] * total_steps
 
         for t in range(total_steps):
-            # input_: 4-th order tensor of size [batch_size, input_channels, height, width]
+            # input_: 4-th order tensor of size [batch_size,input_channels,height,width]
             if t < input_frames:
                 input_ = inputs[:, t]
             elif not teacher_forcing:
@@ -226,7 +228,7 @@ class ConvLSTMNet(nn.Module):
                         [input_, queue.pop(0)], dim=1
                     )  # concat over the channels
 
-            # map the hidden states to predictive frames (with optional sigmoid function)
+            # map the hidden states to predictive frames (with optional sigmoid fn)
 
             outputs[t] = self.layers["output"](input_)
             if self.output_sigmoid:

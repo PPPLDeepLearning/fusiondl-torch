@@ -3,11 +3,12 @@
 
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+
+# import torch.nn.functional as F
 import torch.nn.modules.utils as utils
 
 
-## Convolutional Tensor-Train LSTM Module
+# Convolutional Tensor-Train LSTM Module
 class ConvTTLSTMCell(nn.Module):
     def __init__(
         self,
@@ -32,17 +33,20 @@ class ConvTTLSTMCell(nn.Module):
             Number of input channels of the input tensor.
         hidden_channels: int
             Number of hidden/output channels of the output tensor.
-        Note: the number of hidden_channels is typically equal to the one of input_channels.
+        Note: the number of hidden_channels is typically equal to the one of
+              input_channels.
 
         (Hyper-parameters of the convolutional tensor-train format)
         order: int
-            The order of convolutional tensor-train format (i.e. the number of core tensors).
+            The order of convolutional tensor-train format (i.e. the number of core
+            tensors).
             default: 3
         steps: int
             The total number of past steps used to compute the next step.
             default: 3
         ranks: int
-            The ranks of convolutional tensor-train format (where all ranks are assumed to be the same).
+            The ranks of convolutional tensor-train format (where all ranks are assumed
+             to be the same).
             default: 8
 
         (Hyper-parameters of the convolutional operations)
@@ -56,17 +60,17 @@ class ConvTTLSTMCell(nn.Module):
         """
         super(ConvTTLSTMCell, self).__init__()
 
-        ## Input/output interfaces
+        # Input/output interfaces
         self.input_channels = input_channels
         self.hidden_channels = hidden_channels
 
-        ## Convolutional tensor-train network
+        # Convolutional tensor-train network
         self.steps = steps
         self.order = order
 
         self.lags = steps - order + 1
 
-        ## Convolutional operations
+        # Convolutional operations
         kernel_size = kernel_size  # utils._pair(kernel_size)
         padding = kernel_size // 2  # kernel_size[0] // 2, kernel_size[1] // 2
 
@@ -86,7 +90,7 @@ class ConvTTLSTMCell(nn.Module):
             padding=(padding, 0),
         )
 
-        ## Convolutional layers
+        # Convolutional layers
         self.layers = nn.ModuleList()
         self.layers_ = nn.ModuleList()
         for l in range(order):
@@ -100,7 +104,7 @@ class ConvTTLSTMCell(nn.Module):
             self.layers_.append(Conv3d(in_channels=hidden_channels, out_channels=ranks))
 
     def initialize(self, inputs):
-        """ 
+        """
         Initialization of the hidden/cell states of the convolutional tensor-train cell.
 
         Arguments:
@@ -125,29 +129,35 @@ class ConvTTLSTMCell(nn.Module):
     def forward(self, inputs, first_step=False):
         """
         Computation of the convolutional tensor-train LSTM cell.
-        
+
         Arguments:
         ----------
-        inputs: a 4-th order tensor of size [batch_size, input_channels, height, width] 
+        inputs: a 4-th order tensor of size [batch_size, input_channels, height, width]
             Input tensor to the convolutional-LSTM cell.
 
         first_step: bool
-            Whether the tensor is the first step in the input sequence. 
+            Whether the tensor is the first step in the input sequence.
             If so, both hidden and cell states are intialized to zeros tensors.
-        
+
         Returns:
         --------
-        hidden_states: another 4-th order tensor of size [batch_size, input_channels, height, width]
+        hidden_states: another 4-th order tensor of size [batch_size, input_channels,
+            height, width]
             Hidden states (and outputs) of the convolutional-LSTM cell.
         """
 
         if first_step:
             self.initialize(inputs)  # intialize the states at the first step
 
-        ## (1) Convolutional tensor-train module
-        for l in range(self.order):
+        # (1) Convolutional tensor-train module
+        for layer in range(self.order):
             input_pointer = (
-                self.hidden_pointer if l == 0 else (input_pointer + 1) % self.steps
+                self.hidden_pointer
+                if layer == 0
+                else (self.hidden_pointer + 1) % self.steps  # noqa
+                # TODO(KGF): original line, but input_pointer is undefined 1st iteration
+                # self.hidden_pointer if layer == 0 else (input_pointer + 1) %
+                # self.steps
             )
 
             input_states = (
@@ -156,15 +166,15 @@ class ConvTTLSTMCell(nn.Module):
             input_states = input_states[: self.lags]
 
             input_states = torch.stack(input_states, dim=-1)
-            input_states = self.layers_[l](input_states)
+            input_states = self.layers_[layer](input_states)
             input_states = torch.squeeze(input_states, dim=-1)
 
-            if l == 0:
+            if layer == 0:
                 temp_states = input_states
             else:  # if l > 0:
-                temp_states = input_states + self.layers[l - 1](temp_states)
+                temp_states = input_states + self.layers[layer - 1](temp_states)
 
-        ## (2) Standard convolutional-LSTM module
+        # (2) Standard convolutional-LSTM module
         concat_conv = self.layers[-1](torch.cat([inputs, temp_states], dim=1))
         cc_i, cc_f, cc_o, cc_g = torch.split(concat_conv, self.hidden_channels, dim=1)
 
@@ -181,12 +191,12 @@ class ConvTTLSTMCell(nn.Module):
         return outputs
 
 
-## Standard Convolutional-LSTM Module
+# Standard Convolutional-LSTM Module
 class ConvLSTMCell(nn.Module):
     def __init__(self, input_channels, hidden_channels, kernel_size=5, bias=True):
         """
         Construction of convolutional-LSTM cell.
-        
+
         Arguments:
         ----------
         (Hyper-parameters of input/output interfaces)
@@ -226,8 +236,8 @@ class ConvLSTMCell(nn.Module):
     def initialize(self, inputs):
         """
         Initialization of convolutional-LSTM cell.
-        
-        Arguments: 
+
+        Arguments:
         ----------
         inputs: a 4-th order tensor of size [batch_size, channels, height, width]
             Input tensor of convolutional-LSTM cell.
@@ -246,19 +256,20 @@ class ConvLSTMCell(nn.Module):
     def forward(self, inputs, first_step=False):
         """
         Computation of convolutional-LSTM cell.
-        
+
         Arguments:
         ----------
-        inputs: a 4-th order tensor of size [batch_size, input_channels, height, width] 
+        inputs: a 4-th order tensor of size [batch_size, input_channels, height, width]
             Input tensor to the convolutional-LSTM cell.
 
         first_step: bool
-            Whether the tensor is the first step in the input sequence. 
+            Whether the tensor is the first step in the input sequence.
             If so, both hidden and cell states are intialized to zeros tensors.
-        
+
         Returns:
         --------
-        hidden_states: another 4-th order tensor of size [batch_size, hidden_channels, height, width]
+        hidden_states: another 4-th order tensor of size [batch_size, hidden_channels,
+                       height, width]
             Hidden states (and outputs) of the convolutional-LSTM cell.
         """
         if first_step:

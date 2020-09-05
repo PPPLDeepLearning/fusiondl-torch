@@ -1,5 +1,3 @@
-import os
-import subprocess
 from setuptools import setup, find_packages
 
 import plasma.version
@@ -29,6 +27,7 @@ setup(
     install_requires=[
         "pathos",
         "matplotlib>=2.0.2",
+        "pre-commit",
         # 'scikit-learn',
         # 'joblib',
     ],

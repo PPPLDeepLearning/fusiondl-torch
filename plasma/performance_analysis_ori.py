@@ -1,7 +1,7 @@
-import os, sys
+import sys
 import numpy as np
 
-from performance_nov19 import *
+from performance_nov19 import PerformanceAnalyzer
 from conf import conf
 
 # mode = 'test'

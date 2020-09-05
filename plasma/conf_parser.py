@@ -34,9 +34,7 @@ def parameters(input_file):
 
         params["paths"]["base_path"] = base_path
         if isinstance(params["paths"]["signal_prepath"], list):
-            print(
-                "reading from multiple data folder!**********************************************"
-            )
+            print("reading from multiple data folders!****************")
 
             params["paths"]["signal_prepath"] = [
                 base_path + s for s in params["paths"]["signal_prepath"]

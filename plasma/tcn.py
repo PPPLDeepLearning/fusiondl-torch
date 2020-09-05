@@ -33,7 +33,7 @@ def residual_block(
         activation: The final activation used in o = Activation(x + F(x))
         dropout_rate: Float between 0 and 1. Fraction of the input units to drop.
         kernel_initializer: Initializer for the kernel weights matrix (Conv1D).
-        use_batch_norm: Whether to use batch normalization in the residual layers or not.
+        use_batch_norm: Whether to use batch normalization in the residual layers
     Returns:
         A tuple where the first element is the residual model layer, and the second
         is the skip connection.
@@ -85,13 +85,15 @@ class TCN:
             dilations: The list of the dilations. Example is: [1, 2, 4, 8, 16, 32, 64].
             nb_stacks : The number of stacks of residual blocks to use.
             padding: The padding to use in the convolutional layers, 'causal' or 'same'.
-            use_skip_connections: Boolean. If we want to add skip connections from input to each residual block.
-            return_sequences: Boolean. Whether to return the last output in the output sequence, or the full sequence.
-            activation: The activation used in the residual blocks o = Activation(x + F(x)).
+            use_skip_connections: Boolean. If we want to add skip connections from input
+                                           to each residual block.
+            return_sequences: Boolean. Whether to return the last output in the output
+                                           sequence, or the full sequence.
+            activation: The activation used in the residual blocks o = Activation(x+F(x)
             dropout_rate: Float between 0 and 1. Fraction of the input units to drop.
             name: Name of the model. Useful when having multiple TCN.
             kernel_initializer: Initializer for the kernel weights matrix (Conv1D).
-            use_batch_norm: Whether to use batch normalization in the residual layers or not.
+            use_batch_norm: Whether to use batch normalization in the residual layers
 
         Returns:
             A TCN layer.
@@ -135,9 +137,7 @@ class TCN:
             print("An interface change occurred after the version 2.1.2.")
             print("Before: tcn.TCN(x, return_sequences=False, ...)")
             print("Now should be: tcn.TCN(return_sequences=False, ...)(x)")
-            print(
-                "The alternative is to downgrade to 2.1.2 (pip install keras-tcn==2.1.2)."
-            )
+            print("The alternative is to downgrade to 2.1.2.")
             raise Exception()
 
     def __call__(self, inputs):
@@ -193,19 +193,24 @@ def compiled_tcn(
 ):
     # type: (...) -> keras.Model
     """Creates a compiled TCN model for a given task (i.e. regression or classification).
-    Classification uses a sparse categorical loss. Please input class ids and not one-hot encodings.
+    Classification uses a sparse categorical loss. Please input class ids and not
+    one-hot encodings.
 
     Args:
-        num_feat: The number of features of your input, i.e. the last dimension of: (batch_size, timesteps, input_dim).
-        num_classes: The size of the final dense layer, how many classes we are predicting.
+        num_feat: The number of features of your input, i.e. the last dimension of:
+                  (batch_size, timesteps, input_dim).
+        num_classes: The size of the final dense layer, how many classes we are
+                  predicting.
         nb_filters: The number of filters to use in the convolutional layers.
         kernel_size: The size of the kernel to use in each convolutional layer.
         dilations: The list of the dilations. Example is: [1, 2, 4, 8, 16, 32, 64].
         nb_stacks : The number of stacks of residual blocks to use.
-        max_len: The maximum sequence length, use None if the sequence length is dynamic.
+        max_len: The maximum sequence length, use None if the sequence length is dynamic
         padding: The padding to use in the convolutional layers.
-        use_skip_connections: Boolean. If we want to add skip connections from input to each residual block.
-        return_sequences: Boolean. Whether to return the last output in the output sequence, or the full sequence.
+        use_skip_connections: Boolean. If we want to add skip connections from input to
+                                       each residual block.
+        return_sequences: Boolean. Whether to return the last output in the output
+                                   sequence, or the full sequence.
         regression: Whether the output should be continuous or discrete.
         dropout_rate: Float between 0 and 1. Fraction of the input units to drop.
         activation: The activation used in the residual blocks o = Activation(x + F(x)).
@@ -213,7 +218,7 @@ def compiled_tcn(
         kernel_initializer: Initializer for the kernel weights matrix (Conv1D).
         opt: Optimizer name.
         lr: Learning rate.
-        use_batch_norm: Whether to use batch normalization in the residual layers or not.
+        use_batch_norm: Whether to use batch normalization in the residual layers
     Returns:
         A compiled keras TCN.
     """

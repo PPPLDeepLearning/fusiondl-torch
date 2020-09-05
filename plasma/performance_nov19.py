@@ -1,11 +1,4 @@
 from __future__ import print_function
-import matplotlib
-
-# matplotlib.use('Agg')#for machines that don't have a display
-from matplotlib import rc
-
-# rc('font',**{'family':'serif','sans-serif':['Times']})
-# rc('text', usetex=True)
 import matplotlib.pyplot as plt
 import os
 from pprint import pprint
@@ -13,8 +6,7 @@ import numpy as np
 from scipy import stats
 
 from normalize import VarNormalizer as Normalizer
-from conf import conf
-from shots import Shot, ShotList
+from shots import ShotList
 
 
 class PerformanceAnalyzer:
@@ -36,9 +28,9 @@ class PerformanceAnalyzer:
         T_min_warn_def = conf["data"][
             "T_min_warn"
         ]  # int(round(conf['data']['T_min_warn']/dt))
-        if T_min_warn == None:
+        if T_min_warn is None:
             self.T_min_warn = T_min_warn_def
-        if T_max_warn == None:
+        if T_max_warn is None:
             self.T_max_warn = T_max_warn_def
         self.verbose = verbose
         self.results_dir = results_dir
@@ -105,8 +97,7 @@ class PerformanceAnalyzer:
         return correct_range, accuracy_range, fp_range, missed_range, early_alarm_range
 
     def get_p_thresh_range(self):
-        # return self.conf['data']['target'].threshold_range(self.conf['data']['T_warning'])
-        if np.any(self.p_thresh_range) == None:
+        if np.any(self.p_thresh_range) is None:
             all_preds_tr = self.pred_train
             all_truths_tr = self.truth_train
             all_disruptive_tr = self.disruptive_train
@@ -170,7 +161,6 @@ class PerformanceAnalyzer:
         )
 
         for i, thresh in enumerate(p_thresh_range):
-            # correct,accuracy,fp_rate,missed,early_alarm_rate = self.summarize_shot_prediction_stats(thresh,all_preds,all_truths,all_disruptive)
             (
                 correct,
                 accuracy,
@@ -191,7 +181,7 @@ class PerformanceAnalyzer:
     def get_shot_prediction_stats_from_threshold_arrays(
         self, early_th, correct_th, late_th, nd_th, thresh
     ):
-        indices = np.where(np.logical_and(correct_th > thresh, early_th <= thresh))[0]
+        # indices = np.where(np.logical_and(correct_th > thresh, early_th <= thresh))[0]
         FPs = np.sum(nd_th > thresh)
         TNs = len(nd_th) - FPs
 
@@ -223,7 +213,8 @@ class PerformanceAnalyzer:
             nd_thresholds,
         ) = self.get_threshold_arrays(preds, truths, disruptives)
         d_thresholds = np.maximum(d_early_thresholds, d_correct_thresholds)
-        # rank shots by difficulty. rank 1 is assigned to lowest value, should be highest difficulty
+        # rank shots by difficulty. rank 1 is assigned to lowest value,
+        # should be highest difficulty
         d_ranks = stats.rankdata(
             d_thresholds, method="min"
         )  # difficulty is highest when threshold is low, can't detect disruption
@@ -244,8 +235,8 @@ class PerformanceAnalyzer:
         return ret_facs
 
     def get_threshold_arrays(self, preds, truths, disruptives):
-        num_d = np.sum(disruptives)
-        num_nd = np.sum(~disruptives)
+        # num_d = np.sum(disruptives)
+        # num_nd = np.sum(~disruptives)
         nd_thresholds = []
         d_early_thresholds = []
         d_correct_thresholds = []
@@ -281,7 +272,6 @@ class PerformanceAnalyzer:
         )
 
     def summarize_shot_prediction_stats_by_mode(self, P_thresh, mode, verbose=False):
-
         if mode == "train":
             all_preds = self.pred_train
             all_truths = self.truth_train
@@ -320,7 +310,7 @@ class PerformanceAnalyzer:
         nondisr = FPs + TNs
         if verbose:
             print(
-                "total: {}, tp: {} fp: {} fn: {} tn: {} early: {} late: {} disr: {} nondisr: {}".format(
+                "total: {}, tp: {} fp: {} fn: {} tn: {} early: {} late: {} disr: {} nondisr: {}".format(  # noqa
                     len(all_preds), TPs, FPs, FNs, TNs, earlies, lates, disr, nondisr
                 )
             )
@@ -436,7 +426,7 @@ class PerformanceAnalyzer:
         self.saved_conf = dat["conf"][()]
         self.conf["data"]["T_warning"] = self.saved_conf["data"][
             "T_warning"
-        ]  # all files must agree on T_warning due to output of truth vs. normalized shot ttd.
+        ]  # all files must agree on T_warning due to output of truth vs. normalized ttd
         for mode in ["test", "train"]:
             print(
                 "{}: loaded {} shot ({}) disruptive".format(
@@ -486,7 +476,7 @@ class PerformanceAnalyzer:
             T_max_warn /= 1000.0
             plt.figure()
             alarms += 0.0001
-            bins = np.logspace(np.log10(min(alarms)), np.log10(max(alarms)), 40)
+            # bins = np.logspace(np.log10(min(alarms)), np.log10(max(alarms)), 40)
             # bins=linspace(min(alarms),max(alarms),100)
             #        hist(alarms,bins=bins,alpha=1.0,histtype='step',normed=True,log=False,cumulative=-1)
             #
@@ -854,8 +844,8 @@ class PerformanceAnalyzer:
         if shot.previously_saved(self.shots_dir):
             shot.restore(self.shots_dir)
             if shot.signals_dict is not None:  # make sure shot was saved with data
-                t_disrupt = shot.t_disrupt
-                is_disruptive = shot.is_disruptive
+                # t_disrupt = shot.t_disrupt
+                # is_disruptive = shot.is_disruptive
                 if normalize:
                     self.normalizer.apply(shot)
 
@@ -864,8 +854,7 @@ class PerformanceAnalyzer:
                 lower_lim = 0  # len(pred)
                 plt.close()
                 colors = ["b", "green", "red", "c", "m", "orange", "k", "y"]
-                lss = ["-", "--"]
-                # f,axarr = plt.subplots(len(use_signals)+1,1,sharex=True,figsize=(10,15))#, squeeze=False)
+                # lss = ["-", "--"]
                 f, axarr = plt.subplots(
                     4 + 1, 1, sharex=True, figsize=(18, 15)
                 )  # ,squeeze=False)#, squeeze=False)
@@ -883,7 +872,7 @@ class PerformanceAnalyzer:
                 for i, sig in enumerate(use_signals):
                     num_channels = sig.num_channels
                     sig_arr = shot.signals_dict[sig]
-                    legend = []
+                    # legend = []
                     if num_channels == 1:
                         j = i // 7
                         ax = axarr[j]
@@ -895,8 +884,6 @@ class PerformanceAnalyzer:
                             color=colors[i % 7],
                             label=sig.description,
                         )  # ,linestyle=lss[j],color=colors[j])
-                        #                 else:
-                        #                     ax.plot(xx,sig_arr[:,0],linewidth=2)#,linestyle=lss[j],color=colors[j],label = labels[sig])
                         if np.min(sig_arr[:, 0]) < -100000:
                             ax.set_ylim([-6, 6])
                             ax.set_yticks([-5, 0, 5])
@@ -965,8 +952,6 @@ class PerformanceAnalyzer:
                 if p0 > 0:
                     ax.scatter(xx[k], p, s=300, marker="*", color="r", zorder=3)
 
-                # if len(truth)-T_max_warn >= 0:
-                #     ax.axvline(len(truth)-T_max_warn,color='r')#,label='max warning time')
                 ax.axvline(
                     len(truth) - self.T_min_warn, color="r", linewidth=0.5
                 )  # ,label='min warning time')
@@ -1026,8 +1011,8 @@ class PerformanceAnalyzer:
 
         if shot.previously_saved(self.shots_dir):
             shot.restore(self.shots_dir)
-            t_disrupt = shot.t_disrupt
-            is_disruptive = shot.is_disruptive
+            # t_disrupt = shot.t_disrupt
+            # is_disruptive = shot.is_disruptive
             if normalize:
                 self.normalizer.apply(shot)
 
@@ -1036,7 +1021,7 @@ class PerformanceAnalyzer:
                 len(use_signals) + 1, 1, sharex=True, figsize=(13, 13)
             )  # , squeeze=False)
             plt.title(prediction_type)
-            # all files must agree on T_warning due to output of truth vs. normalized shot ttd.
+            # all files must agree on T_warning due to output of truth vs normalized ttd
             assert np.all(shot.ttd.flatten() == truth.flatten())
             for i, sig in enumerate(use_signals):
                 num_channels = sig.num_channels
@@ -1149,7 +1134,7 @@ class PerformanceAnalyzer:
             plt.savefig(title_str + ".png", bbox_inches="tight")
         plt.close("all")
         plt.plot(fp_range, 1 - missed_range, "-b", linestyle=linestyle)
-        if thres_opt != None:
+        if thres_opt is not None:
             idx_opt = (np.abs(P_thresh_range - thres_opt)).argmin()
             fp_opt = fp_range[idx_opt]
             tp_opt = 1 - missed_range[idx_opt]
@@ -1216,8 +1201,8 @@ class PerformanceAnalyzer:
             self.normalizer.set_inference_mode(True)
 
         shot.restore(self.shots_dir)
-        t_disrupt = shot.t_disrupt
-        is_disruptive = shot.is_disruptive
+        # t_disrupt = shot.t_disrupt
+        # is_disruptive = shot.is_disruptive
         self.normalizer.apply(shot)
 
         pred, truth, is_disr = self.get_pred_truth_disr_by_shot(shot)
@@ -1238,12 +1223,12 @@ class PerformanceAnalyzer:
             pred = self.pred_test
             truth = self.truth_test
             is_disruptive = self.disruptive_test
-            shot_list = self.shot_list_test
+            # shot_list = self.shot_list_test
         else:
             pred = self.pred_train
             truth = self.truth_train
             is_disruptive = self.disruptive_train
-            shot_list = self.shot_list_train
+            # shot_list = self.shot_list_train
         return self.get_roc_area(pred, truth, is_disruptive)
 
     def get_roc_area(self, all_preds, all_truths, all_disruptive):
