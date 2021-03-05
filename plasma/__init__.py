@@ -22,6 +22,13 @@ warnings.filterwarnings(
     module="tensor*",
 )
 
+# KGF: might not be working at suppressing the warning
+warnings.filterwarnings('ignore',
+                        category=UserWarning,
+                        message="masked_scatter_ received a mask with dtype torch.uint8",  # noqa
+                        )  # module="pytorch*")
+
+
 # Optional: disable the C-based library diagnostic info and warning messages:
 # 2019-11-06 18:27:31.698908: I ...  dynamic library libcublas.so.10
 # (independent from tf.logging.set_verbosity() diagnostic control)

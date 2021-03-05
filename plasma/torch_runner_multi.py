@@ -3,6 +3,7 @@ from __future__ import print_function
 # from torchsummary import summary
 
 import numpy as np
+import time
 
 # leading to import errors:
 # from hyperopt import hp, STATUS_OK
@@ -499,6 +500,21 @@ def make_predictions(
     return y_prime, y_gold, disruptive
 
 
+def calculate_speed(t0, t_after_forward, t_after_update, batch_size):
+    t_calculate = t_after_update - t0
+    t_backprop = t_after_update - t_after_forward
+    t_tot = t_after_update - t0
+
+    examples_per_sec = batch_size/t_tot
+
+    print_str = ('{:.2E} Examples/sec | {:.2E} sec/batch '.format(
+        examples_per_sec, t_tot)
+                 + '[{:.2E} forward, {:.2E} backward.]'.format(
+                     t_calculate, t_backprop))
+    print_str += f'[batch = {batch_size}'
+    return print_str
+
+
 def make_predictions_and_evaluate_gpu(
     conf, shot_list, loader, custom_path=None, inference_model=None, device=None
 ):
@@ -529,6 +545,7 @@ def train_epoch(model, data_gen, optimizer, loss_fn, device=None):
     x_, y_, mask_, num_so_far_start, num_total = next(data_gen)
     num_so_far = num_so_far_start
     step = 0
+    t2 = t1 = t0 = 0.0
     while True:
         x, y, mask = (
             Variable(torch.from_numpy(x_).float()).to(device),
@@ -536,7 +553,10 @@ def train_epoch(model, data_gen, optimizer, loss_fn, device=None):
             Variable(torch.from_numpy(mask_).byte()).to(device),
         )
         optimizer.zero_grad()
+        t0 = time.time()
         output = model(x)
+        #torch.cuda.synchronize()
+        t1 = time.time()
         output_masked = torch.masked_select(output, mask)
         y_masked = torch.masked_select(y, mask)
         print("INPUTSHAPING::")
@@ -548,8 +568,11 @@ def train_epoch(model, data_gen, optimizer, loss_fn, device=None):
         total_loss += loss.data.item()
 
         loss.backward()
+        # torch.cuda.synchronize()
+        t2 = time.time()
         optimizer.step()
         step += 1
+        write_str_0 = calculate_speed(t0, t1, t2, 128)
         print(
             "[{}]  [{}/{}] loss: {:.3f}, ave_loss: {:.3f}".format(
                 step,
@@ -559,6 +582,7 @@ def train_epoch(model, data_gen, optimizer, loss_fn, device=None):
                 total_loss / step,
             )
         )
+        print(write_str_0)
         if num_so_far - num_so_far_start >= num_total:
             break
         x_, y_, mask_, num_so_far, num_total = next(data_gen)
