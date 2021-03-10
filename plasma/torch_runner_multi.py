@@ -505,13 +505,12 @@ def calculate_speed(t0, t_after_forward, t_after_update, batch_size):
     t_backprop = t_after_update - t_after_forward
     t_tot = t_after_update - t0
 
-    examples_per_sec = batch_size/t_tot
+    examples_per_sec = batch_size / t_tot
 
-    print_str = ('{:.2E} Examples/sec | {:.2E} sec/batch '.format(
-        examples_per_sec, t_tot)
-                 + '[{:.2E} forward, {:.2E} backward.]'.format(
-                     t_calculate, t_backprop))
-    print_str += f'[batch = {batch_size}'
+    print_str = "{:.2E} Examples/sec | {:.2E} sec/batch ".format(
+        examples_per_sec, t_tot
+    ) + "[{:.2E} forward, {:.2E} backward.]".format(t_calculate, t_backprop)
+    print_str += f"[batch = {batch_size}]"
     return print_str
 
 
@@ -555,7 +554,7 @@ def train_epoch(model, data_gen, optimizer, loss_fn, device=None):
         optimizer.zero_grad()
         t0 = time.time()
         output = model(x)
-        #torch.cuda.synchronize()
+        # torch.cuda.synchronize()
         t1 = time.time()
         output_masked = torch.masked_select(output, mask)
         y_masked = torch.masked_select(y, mask)
@@ -633,7 +632,7 @@ def train(conf, shot_list_train, shot_list_validate, loader):
     not_updated = 0
     # total_loss = 0
     # count = 0
-    loss_fn = nn.MSELoss(size_average=True)
+    loss_fn = nn.MSELoss(reduction="mean")
     model_path = get_model_path(conf)
     makedirs_process_safe(os.path.dirname(model_path))
     epochlog = open("epoch_train_log.txt", "w")
