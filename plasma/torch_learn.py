@@ -5,6 +5,8 @@ from conf import conf
 import numpy as np
 import torch
 
+import torch_ipex
+
 """
 #########################################################
 This file trains a deep learning model to predict
@@ -131,7 +133,7 @@ disruptive_test = []
 #         make_predictions(conf, shot_list_test, loader)
 
 # TODO(KGF): check tuple unpack
-device = torch.device("cuda")
+device = torch.device("dpcpp:0")
 (
     y_prime_train,
     y_gold_train,

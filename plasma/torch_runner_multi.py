@@ -24,6 +24,9 @@ import torch.optim as opt
 from torch.nn.utils import weight_norm
 from convlstmnet import ConvLSTMNet
 
+
+import torch_ipex
+
 model_filename = "torch_model.pt"
 
 
@@ -50,7 +53,7 @@ class FLSTM(nn.Module):
         self.rnn_layers = rnn_layers
         self.output_dim = output_dim
         if device is None:
-            self.device = torch.device("cuda")
+            self.device = torch.device("dpcpp:0")
         else:
             self.device = device
         self.rnn = nn.LSTM(
@@ -592,7 +595,7 @@ def train_epoch(model, data_gen, optimizer, loss_fn, device=None):
 def train(conf, shot_list_train, shot_list_validate, loader):
     np.random.seed(1)
     # use_cuda = True  # False
-    device = torch.device("cuda")
+    device = torch.device("dpcpp:0")
 
     # data_gen = ProcessGenerator(partial(
     # loader.training_batch_generator_full_shot_partial_reset,shot_list=shot_list_train)()
