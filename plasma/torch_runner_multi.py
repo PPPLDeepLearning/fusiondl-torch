@@ -551,6 +551,7 @@ def train_epoch(model, data_gen, optimizer, loss_fn, device=None):
             Variable(torch.from_numpy(y_).float()).to(device),
             Variable(torch.from_numpy(mask_).byte()).to(device),
         )
+        mask = mask.bool()
         optimizer.zero_grad()
         t0 = time.time()
         output = model(x)
