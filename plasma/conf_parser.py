@@ -19,7 +19,7 @@ def parameters(input_file):
     # via "import keras.backend as K" in targets.py
     from targets import (
         HingeTarget,
-        MaxHingeTarget,
+        #MaxHingeTarget,
         BinaryTarget,
         TTDTarget,
         TTDInvTarget,

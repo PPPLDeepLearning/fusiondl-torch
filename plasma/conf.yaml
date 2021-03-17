@@ -55,7 +55,7 @@ model:
   lr_decay: 1.0
   lr_decay_factor: 1.2
   lr_decay_patience: 10
-  model_type: TTLSTM
+  model_type: LSTM
   num_conv_filters: 5
   num_conv_layers: 3
   optimizer: adam
@@ -87,7 +87,7 @@ model:
   torch: true
   tt_lstm_hidden: 10
   warmup_steps: 0
-num_gpus: 4
+num_gpus: 1
 paths:
   data: d3d_data_0D
   executable: torch_learn.py
@@ -100,7 +100,7 @@ target: ttdinv
 training:
   as_array_of_shots: true
   batch_generator_warmup_steps: 0
-  batch_size: 64
+  batch_size: 128
   data_parallel: false
   hyperparam_tuning: true
   max_patch_length: 100000
