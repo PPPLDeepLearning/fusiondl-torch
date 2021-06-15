@@ -650,10 +650,10 @@ def train(conf, shot_list_train, shot_list_validate, loader):
             datetime.datetime.now(),
         )
         train_model.train()
-        scheduler.step()
         (step, ave_loss, curr_loss, num_so_far, effective_epochs) = train_epoch(
             train_model, data_gen, optimizer, loss_fn, device=device
         )
+        scheduler.step()
         e = effective_epochs
 
         print(
