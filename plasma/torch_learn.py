@@ -133,7 +133,7 @@ disruptive_test = []
 #         make_predictions(conf, shot_list_test, loader)
 
 # TODO(KGF): check tuple unpack
-device = torch.device("dpcpp:0")
+device = torch.device("xpu")
 (
     y_prime_train,
     y_gold_train,
