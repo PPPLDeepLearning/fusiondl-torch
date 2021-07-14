@@ -16,7 +16,7 @@ import sys
 import os
 
 import numpy as np
-import pathos.multiprocessing as mp
+import multiprocessing as mp
 
 from processing import append_to_filename
 from shots import ShotList
