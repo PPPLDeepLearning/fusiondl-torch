@@ -17,7 +17,7 @@ import abc
 
 import numpy as np
 from scipy.signal import exponential, correlate
-import pathos.multiprocessing as mp
+import multiprocessing as mp
 
 from shots import ShotList, Shot
 
